@@ -13,4 +13,25 @@ const WalletConnection = () => {
       <button onClick={connect}>Connect Wallet</button>
    );
 };
+const stakeNFTForLoan = async (nftAddress, loanAmount) => {
+   const tx = new Transaction().add(
+      SystemProgram.transfer({
+         fromPubkey: publicKey,
+         toPubkey: nftAddress,
+         lamports: loanAmount,
+      })
+   );
+   await sendTransaction(tx, connection);
+};
+
+const repayLoan = async (loanAccountAddress, repaymentAmount) => {
+   const tx = new Transaction().add(
+      SystemProgram.transfer({
+         fromPubkey: publicKey,
+         toPubkey: loanAccountAddress,
+         lamports: repaymentAmount,
+      })
+   );
+   await sendTransaction(tx, connection);
+};
 
