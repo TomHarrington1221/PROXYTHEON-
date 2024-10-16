@@ -1,0 +1,97 @@
+anchor init nft_marketplace
+cd nft_marketplace
+use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_program;
+
+declare_id!("YourProgramIDHere");
+
+#[program]
+pub mod nft_marketplace {
+    use super::*;
+
+    pub fn create_nft(ctx: Context<CreateNFT>, metadata: String) -> ProgramResult {
+        let nft = &mut ctx.accounts.nft;
+        nft.owner = *ctx.accounts.user.key;
+        nft.metadata = metadata;
+        Ok(())
+    }
+
+    pub fn list_nft(ctx: Context<ListNFT>, price: u64) -> ProgramResult {
+        let nft = &mut ctx.accounts.nft;
+        nft.is_listed = true;
+        nft.price = price;
+        Ok(())
+    }
+
+    pub fn buy_nft(ctx: Context<BuyNFT>) -> ProgramResult {
+        let nft = &mut ctx.accounts.nft;
+        nft.owner = *ctx.accounts.buyer.key;
+        nft.is_listed = false;
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct CreateNFT<'info> {
+    #[account(init, payer = user, space = 8 + 32 + 32)]
+    pub nft: Account<'info, NFT>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ListNFT<'info> {
+    #[account(mut, has_one = owner)]
+    pub nft: Account<'info, NFT>,
+    pub owner: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct BuyNFT<'info> {
+    #[account(mut, has_one = owner)]
+    pub nft: Account<'info, NFT>,
+    #[account(mut)]
+    pub buyer: Signer<'info>,
+    #[account(mut)]
+    pub owner: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct NFT {
+    pub owner: Pubkey,
+    pub metadata: String,
+    pub price: u64,
+    pub is_listed: bool,
+}
+pub fn stake_nft(ctx: Context<StakeNFT>) -> ProgramResult {
+    let nft = &mut ctx.accounts.nft;
+    let staking_account = &mut ctx.accounts.staking_account;
+    
+    nft.is_listed = false; // Remove from sale if staked
+    staking_account.owner = nft.owner;
+    staking_account.nft_token_id = nft.key();
+    staking_account.stake_start_time = Clock::get()?.unix_timestamp;
+
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct StakeNFT<'info> {
+    #[account(mut, has_one = owner)]
+    pub nft: Account<'info, NFT>,
+    #[account(init, payer = owner, space = 8 + 32 + 32 + 8)]
+    pub staking_account: Account<'info, StakingAccount>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct StakingAccount {
+    pub owner: Pubkey,
+    pub nft_token_id: Pubkey,
+    pub stake_start_time: i64,
+}
+
